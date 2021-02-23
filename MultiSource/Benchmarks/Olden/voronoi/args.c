@@ -1,7 +1,9 @@
 /* For copyright information, see olden_v1.0/COPYRIGHT */
 
-#include <stdlib.h>
-#include <stdio.h>
+#include <stdlib_checked.h>
+#include <stdio_checked.h>
+
+#pragma BOUNDS_CHECKED ON
 
 extern int NumNodes,NDim;
 
@@ -15,7 +17,8 @@ int mylog(int num) {
   return j;
 } 
 
-int dealwithargs(int argc, char *argv[]) {
+_Unchecked
+int dealwithargs(int argc, _Array_ptr<char *> argv : count(argc)) {
   int size;
 
   if (argc > 3)

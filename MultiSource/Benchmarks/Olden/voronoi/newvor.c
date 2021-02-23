@@ -1,30 +1,30 @@
 /* For copyright information, see olden_v1.0/COPYRIGHT */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdio_checked.h>
+#include <stdlib_checked.h>
 #include "defines.h"
 
 #if defined(__linux__)
 #include <malloc.h>
 #endif
 
+#pragma BOUNDS_CHECKED ON
 
-VERTEX_PTR *vp ;
-struct VERTEX *va ;
-EDGE_PTR *next ;
-VERTEX_PTR *org ;
+_Ptr<VERTEX_PTR> vp ;
+_Array_ptr<struct VERTEX> va ;
+_Ptr<EDGE_PTR> next ;
+_Ptr<VERTEX_PTR> org ;
 int num_vertices, num_edgeparts, stack_size ;
 int to_lincoln, to_off, to_3d_out, to_color, voronoi, delaunay, interactive, ahost;
-char *see;
+_Array_ptr<char> see;
 int NumNodes, NDim;
 
 int flag;
 
-QUAD_EDGE connect_left(a, b)
-QUAD_EDGE a,b;
+QUAD_EDGE connect_left(QUAD_EDGE a : quad_bounds(a), QUAD_EDGE b : quad_bounds(b)) : count(4)
 {
-  VERTEX_PTR t1,t2;
-  register QUAD_EDGE ans,lnexta;
+  VERTEX_PTR t1 = NULL, t2 = NULL;
+  register QUAD_EDGE ans : quad_bounds(ans) = NULL, lnexta : quad_bounds(lnexta) = NULL;
 
 /*printf("begin connect_left\n");*/
   t1=dest(a);
@@ -37,11 +37,10 @@ QUAD_EDGE a,b;
   return(ans);
 }
 
-QUAD_EDGE connect_right(a, b)
-QUAD_EDGE a,b;
+QUAD_EDGE connect_right(QUAD_EDGE a : quad_bounds(a), QUAD_EDGE b : quad_bounds(b)) : count(4)
 {
-  VERTEX_PTR t1,t2;
-  register QUAD_EDGE ans, oprevb;
+  VERTEX_PTR t1 = NULL, t2 = NULL;
+  register QUAD_EDGE ans : quad_bounds(ans) = NULL, oprevb : quad_bounds(oprevb) = NULL;
 
 /*printf("begin connect_right\n");*/
   t1=dest(a);
@@ -54,11 +53,10 @@ QUAD_EDGE a,b;
   return(ans);
 }
 
-void deleteedge(e)
+void deleteedge(QUAD_EDGE e : quad_bounds(e))
      /*disconnects e from the rest of the structure and destroys it. */
-QUAD_EDGE e;
 {
-  QUAD_EDGE f;
+  QUAD_EDGE f = NULL;
 /*printf("begin delete_edge 0x%x\n",e);*/
     f=oprev(e);
     splice(e, f);
@@ -72,13 +70,11 @@ QUAD_EDGE e;
 /*	Top-level Delaunay Triangulation Procedure              */
 /****************************************************************/
 
-QUAD_EDGE build_delaunay_triangulation(tree,extra)
+QUAD_EDGE build_delaunay_triangulation(VERTEX_PTR tree, VERTEX_PTR extra) : count(4)
     /* builds delaunay triangulation.
        va is an array of vertices, from 0 to size.  Each vertex consists of
        a vector and a data pointer.   edge is a pointer to an
        edge on the convex hull of the constructed delaunay triangulation. */
-
-     VERTEX_PTR tree,extra;
 {
     EDGE_PAIR retval;
 
@@ -86,10 +82,9 @@ QUAD_EDGE build_delaunay_triangulation(tree,extra)
     return retval.left;
 }
 
-VERTEX_PTR get_low(tree)
-     register VERTEX_PTR tree;
+VERTEX_PTR get_low(register VERTEX_PTR tree)
 {
-  register VERTEX_PTR temp;
+  register VERTEX_PTR temp = NULL;
   while((temp=tree->left)) tree=temp;             /* 3% load penalty */
   return tree;
 }
@@ -101,10 +96,12 @@ VERTEX_PTR get_low(tree)
 
 EDGE_PAIR build_delaunay(VERTEX_PTR tree, VERTEX_PTR extra)
 {
-    QUAD_EDGE a,b,c,ldo,rdi,ldi,rdo;
+    QUAD_EDGE a : quad_bounds(a) = NULL, b : quad_bounds(b) = NULL, c : quad_bounds(c) = NULL;
+    QUAD_EDGE ldo : quad_bounds(ldo) = NULL, rdi : quad_bounds(rdi) = NULL;
+    QUAD_EDGE ldi : quad_bounds(ldi) = NULL, rdo : quad_bounds(rdo) = NULL;
     EDGE_PAIR retval;
-    register VERTEX_PTR maxx, minx;
-    VERTEX_PTR s1, s2, s3;
+    register VERTEX_PTR maxx = NULL, minx = NULL;
+    VERTEX_PTR s1 = NULL, s2 = NULL, s3 = NULL;
 
     EDGE_PAIR delleft, delright;
 
@@ -125,7 +122,7 @@ EDGE_PAIR build_delaunay(VERTEX_PTR tree, VERTEX_PTR extra)
 	retval.right = rdo;
     }
     else if (!tree)
-      {
+     _Unchecked {
 	printf("ERROR: Only 1 point!\n"); 
 	exit(-1);
       }
@@ -159,31 +156,31 @@ return retval;
 /****************************************************************/
 /*	Quad-edge storage allocation                            */
 /****************************************************************/
-QUAD_EDGE next_edge, avail_edge;
+QUAD_EDGE next_edge : quad_bounds(next_edge) = NULL, avail_edge : quad_bounds(avail_edge) = NULL;
 
 #define NYL NULL
 
-void delete_all_edges() { next_edge= 0; avail_edge = NYL;}
+void delete_all_edges(void) { next_edge= 0; avail_edge = NYL;}
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__MINGW32__)
 #define MEMALIGN_IS_NOT_AVAILABLE
 #endif
 
 /* memalign() on my SGI doesn't work. Thus, I have to write my own */
-void* myalign(int align_size, int alloc_size)
+_Array_ptr<void> myalign(int align_size, int alloc_size) : byte_count(alloc_size)
 {   
 #ifdef MEMALIGN_IS_NOT_AVAILABLE
-    char* base = (char*)malloc(alloc_size + align_size);
+    _Array_ptr<char> base : byte_count(alloc_size + align_size) = malloc(alloc_size + align_size);
 #else
-    char* base = (char*)memalign(align_size, alloc_size);
+    _Array_ptr<char> base : byte_count(alloc_size) = (char*)memalign(align_size, alloc_size);
 #endif
-    void *Result;
-    if (base == NULL){
+    _Array_ptr<void> Result : byte_count(alloc_size) = NULL;
+    if (base == NULL) _Unchecked {
         printf("myalign() failed\n");
         exit(-1);
     }
 #ifdef MEMALIGN_IS_NOT_AVAILABLE
-    return (void*)(base + align_size - ((uptrint)base % align_size));
+    return (_Array_ptr<void>)(base + align_size - ((uptrint)base % align_size));
 #else
     return base;
 #endif
@@ -191,13 +188,13 @@ void* myalign(int align_size, int alloc_size)
 
 
 
-QUAD_EDGE alloc_edge() {
-  QUAD_EDGE ans;
+QUAD_EDGE alloc_edge(void) : count(4) {
+  QUAD_EDGE ans : quad_bounds(ans) = NULL;
 
   if (avail_edge == NYL) {
     ans = (QUAD_EDGE)myalign(4*(sizeof(struct edge_rec)),
                              4*(sizeof(struct edge_rec)));
-    if ((uptrint)ans & ANDF) {
+    if ((uptrint)ans & ANDF) _Unchecked {
       printf("Aborting in alloc_edge, ans = 0x%p\n", ans);
       exit(-1);
     }
@@ -211,7 +208,7 @@ QUAD_EDGE alloc_edge() {
   return ans;
 }
 
-void free_edge(QUAD_EDGE e) {
+void free_edge(QUAD_EDGE e : quad_bounds(e)) {
   e = (QUAD_EDGE) ((uptrint) e ^ ((uptrint) e & ANDF));
   onext(e) = avail_edge;
   avail_edge = e;
@@ -223,13 +220,12 @@ void free_edge(QUAD_EDGE e) {
 /*	Geometric primitives                                    */
 /****************************************************************/
 
-BOOLEAN incircle(a,b,c,d)
+BOOLEAN incircle(VERTEX_PTR a, VERTEX_PTR b, VERTEX_PTR c, VERTEX_PTR d)
      /* incircle, as in the Guibas-Stolfi paper. */
-     VERTEX_PTR a,b,c,d;
 {
   double adx, ady, bdx, bdy, cdx, cdy, dx, dy, anorm, bnorm, cnorm, dnorm;
   double dret ;
-  VERTEX_PTR loc_a,loc_b,loc_c,loc_d;
+  VERTEX_PTR loc_a = NULL, loc_b = NULL, loc_c = NULL, loc_d = NULL;
 
   /*if (flag) printf("incircle: 0x%x,0x%x,0x%x,0x%x\n",a,b,c,d);*/
   loc_d = d; 
@@ -252,7 +248,7 @@ BOOLEAN incircle(a,b,c,d)
 BOOLEAN ccw(VERTEX_PTR a, VERTEX_PTR b, VERTEX_PTR c) {
   double dret ;
   double xa,ya,xb,yb,xc,yc;
-  VERTEX_PTR loc_a,loc_b,loc_c;
+  VERTEX_PTR loc_a = NULL, loc_b = NULL, loc_c = NULL;
   loc_a = a;
   xa=X(loc_a); ya=Y(loc_a);
   loc_b = b;
@@ -269,10 +265,9 @@ BOOLEAN ccw(VERTEX_PTR a, VERTEX_PTR b, VERTEX_PTR c) {
 /****************************************************************/
 /*	Quad-edge manipulation primitives                       */
 /****************************************************************/
-QUAD_EDGE makeedge(origin, destination)
-VERTEX_PTR origin, destination;
+QUAD_EDGE makeedge(VERTEX_PTR origin, VERTEX_PTR destination) : count(4)
 {
-    register QUAD_EDGE temp, ans;
+    register QUAD_EDGE temp : quad_bounds(temp) = NULL, ans : quad_bounds(ans) = NULL;
     temp =  alloc_edge();
     ans = temp;
 
@@ -291,11 +286,10 @@ VERTEX_PTR origin, destination;
     return(ans);
 }
 
-void splice(a,b)
-QUAD_EDGE a, b;
+void splice(QUAD_EDGE a : quad_bounds(a), QUAD_EDGE b : quad_bounds(b))
 {
-    QUAD_EDGE alpha, beta, temp;
-    QUAD_EDGE t1;
+    QUAD_EDGE alpha : quad_bounds(alpha) = NULL, beta : quad_bounds(beta) = NULL, temp : quad_bounds(temp) = NULL;
+    QUAD_EDGE t1 : quad_bounds(t1) = NULL;
 
     /*printf("begin splice 0x%x,0x%x\n",a,b);*/
     /*dump_quad(a); dump_quad(b);*/
@@ -318,11 +312,10 @@ QUAD_EDGE a, b;
     /*printf("End splice\n");*/
 }
 
-void swapedge(e)
-QUAD_EDGE e;
+void swapedge(QUAD_EDGE e : quad_bounds(e))
 {
-    QUAD_EDGE a,b,syme,lnexttmp;
-    VERTEX_PTR a1,b1;
+    QUAD_EDGE a : quad_bounds(a) = NULL, b : quad_bounds(b) = NULL, syme : quad_bounds(syme) = NULL, lnexttmp : quad_bounds(lnexttmp) = NULL;
+    VERTEX_PTR a1 = NULL, b1 = NULL;
     
     /*printf("begin swapedge\n");*/
     a = oprev(e);
@@ -346,10 +339,9 @@ QUAD_EDGE e;
 /****************************************************************/
 /*#define valid(l) ccw(orig(basel), dest(l), dest(basel))*/
 
-int valid(l,basel)
-     QUAD_EDGE l,basel;
+int valid(QUAD_EDGE l : quad_bounds(l), QUAD_EDGE basel : quad_bounds(basel))
 {
-  register VERTEX_PTR t1,t2,t3;
+  register VERTEX_PTR t1 = NULL, t2 = NULL, t3 = NULL;
 
   /*printf("valid:0x%x,0x%x\n",l,basel);*/
 
@@ -360,20 +352,19 @@ int valid(l,basel)
   return ccw(t1,t2,t3);
 }
 
-void dump_quad(ptr)
-     QUAD_EDGE ptr;
+void dump_quad(QUAD_EDGE ptr : quad_bounds(ptr))
 {
   int i;
-  QUAD_EDGE j;
-  VERTEX_PTR v;
+  QUAD_EDGE j : quad_bounds(j) = NULL;
+  VERTEX_PTR v = NULL;
 
   ptr = (QUAD_EDGE) ((uptrint) ptr & ~ANDF);
-  printf("Entered DUMP_QUAD: ptr=0x%p\n",ptr);
+  _Unchecked { printf("Entered DUMP_QUAD: ptr=0x%p\n",ptr); }
   for (i=0; i<4; i++)
    {
     j=onext(((QUAD_EDGE) (ptr+i)));
     v = orig(j);
-    printf("DUMP_QUAD: ptr=0x%p onext=0x%p,v=0x%p\n",ptr+i,j,v);
+    _Unchecked { printf("DUMP_QUAD: ptr=0x%p onext=0x%p,v=0x%p\n",ptr+i,j,v); }
    }
 }
 
@@ -382,11 +373,11 @@ void dump_quad(ptr)
 
 
 
-EDGE_PAIR do_merge(QUAD_EDGE ldo, QUAD_EDGE ldi, QUAD_EDGE rdi, QUAD_EDGE rdo)
+EDGE_PAIR do_merge(QUAD_EDGE ldo : quad_bounds(ldo), QUAD_EDGE ldi : quad_bounds(ldi), QUAD_EDGE rdi : quad_bounds(rdi), QUAD_EDGE rdo : quad_bounds(rdo))
 {
   int rvalid, lvalid;
-  register QUAD_EDGE basel,lcand,rcand,t;
-  VERTEX_PTR t1,t2;
+  register QUAD_EDGE basel : quad_bounds(basel) = NULL, lcand : quad_bounds(lcand) = NULL, rcand : quad_bounds(rcand) = NULL, t : quad_bounds(t) = NULL;
+  VERTEX_PTR t1 = NULL, t2 = NULL;
 
 /*printf("merge\n");*/
   while (1) {
@@ -439,7 +430,7 @@ EDGE_PAIR do_merge(QUAD_EDGE ldo, QUAD_EDGE ldi, QUAD_EDGE rdi, QUAD_EDGE rdo)
   if (t2/*dest(basel)*/ == orig(ldo)) ldo = sym(basel);
   
   while (1) {
-    VERTEX_PTR v1,v2,v3,v4;
+    VERTEX_PTR v1 = NULL, v2 = NULL, v3 = NULL, v4 = NULL;
 
     /*printf("valid site 1,lcand=0x%x,basel=0x%x\n",lcand,basel);*/
     /*dump_quad(lcand);*/
@@ -531,20 +522,19 @@ EDGE_PAIR do_merge(QUAD_EDGE ldo, QUAD_EDGE ldi, QUAD_EDGE rdi, QUAD_EDGE rdo)
 
 int loop = 0, randum = 1, filein = 0 , fileout = 1, statistics = 0; 
 
-void in_order(tree)
-     VERTEX_PTR tree;
+void in_order(VERTEX_PTR tree)
 {
-  VERTEX_PTR tleft, tright;
+  VERTEX_PTR tleft = NULL, tright = NULL;
   double x, y;
 
   if (!tree) {
-    printf("NULL\n");
+    _Unchecked { printf("NULL\n"); }
     return;
   }
 
   x = X(tree);
   y = Y(tree);
-  printf("X=%f, Y=%f\n",x, y);
+  _Unchecked { printf("X=%f, Y=%f\n",x, y); }
   tleft = tree->left;
   in_order(tleft);
   tright = tree->right;
@@ -579,13 +569,14 @@ void print_extra(VERTEX_PTR extra) {
   double x, y;
   x = X(extra);
   y = Y(extra);
-  printf("X=%f, Y=%f\n",x, y);
+  _Unchecked { printf("X=%f, Y=%f\n",x, y); }
 }
 
-int main(int argc, char **argv) {
-  struct EDGE_STACK *my_stack;
+_Unchecked
+int main(int argc, _Array_ptr<char *> argv : count(argc)) {
+  _Ptr<struct EDGE_STACK> my_stack = NULL;
   struct get_point point, extra;
-  QUAD_EDGE edge;
+  QUAD_EDGE edge : quad_bounds(edge) = NULL;
   int n, retained;
   to_lincoln = to_off = to_3d_out = to_color = 0;
   voronoi = delaunay = 1; interactive = ahost = 0 ;
@@ -597,16 +588,20 @@ int main(int argc, char **argv) {
 /*  delete_all_edges();*/
   if (1) {
     printf("getting %d points\n", n);
+    _Checked {
     extra=get_points(1,1.0,n,1023,NumNodes-1,1);
     point=get_points(n-1,extra.curmax,n-1,extra.seed,0,NumNodes);
+    }
     printf("Done getting points\n");
+    _Checked {
     num_vertices = n + 1;
     my_stack=allocate_stack(num_vertices);
     if (flag) in_order(point.v);
+    }
     if (flag) print_extra(extra.v);
     printf("Doing voronoi on %d nodes\n", n); 
 
-    edge=build_delaunay_triangulation(point.v,extra.v);
+    _Checked{ edge=build_delaunay_triangulation(point.v,extra.v); }
     
     if (flag) output_voronoi_diagram(edge,n,my_stack);
   }
@@ -614,29 +609,27 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-struct EDGE_STACK *allocate_stack(int num_vertice)
+_Ptr<struct EDGE_STACK> allocate_stack(int num_vertice)
 {
-  struct EDGE_STACK *my_stack;
+  _Ptr<struct EDGE_STACK> my_stack = NULL;
 
   num_edgeparts = 12*num_vertice;
-  my_stack = (struct EDGE_STACK *)malloc(sizeof(struct EDGE_STACK));
-  my_stack->elts = (QUAD_EDGE *)malloc(num_edgeparts * sizeof(QUAD_EDGE));
+  my_stack = (_Ptr<struct EDGE_STACK>)malloc(sizeof(struct EDGE_STACK));
+  my_stack->elts = (_Array_ptr<QUAD_EDGE>)malloc(num_edgeparts * sizeof(QUAD_EDGE));
   my_stack->stack_size = num_edgeparts/2;
   return my_stack;
 }
 
-void free_all(cont,my_stack)
-     int cont;
-     struct EDGE_STACK *my_stack;
+void free_all(int cont, _Ptr<struct EDGE_STACK> my_stack)
 {
-  free(my_stack->elts);
+  free((_Array_ptr<void>)my_stack->elts);
   free(my_stack);
 }
 
 struct get_point get_points(int n, double curmax,int i, int seed,
                             int processor, int numnodes)
 {
-  VERTEX_PTR node;
+  VERTEX_PTR node = NULL;
   struct get_point point;
   int j;
 
@@ -680,15 +673,15 @@ struct get_point get_points(int n, double curmax,int i, int seed,
 /*	Graph Traversal Routines */
 /****************************************************************/
 
-QUAD_EDGE pop_edge(struct EDGE_STACK *x) {
+QUAD_EDGE pop_edge(_Ptr<struct EDGE_STACK> x) : count(4) {
   int a=x->ptr--;
   return (x)->elts[a];
 }
 
-void push_edge(struct EDGE_STACK *stack, QUAD_EDGE edge) {
+void push_edge(_Ptr<struct EDGE_STACK> stack, QUAD_EDGE edge : quad_bounds(edge)) {
   register int a;
   /*printf("pushing edge \n");*/
-  if (stack->ptr == stack->stack_size) {
+  if (stack->ptr == stack->stack_size) _Unchecked {
     printf("cannot push onto stack: stack is too large\n");
   }
   else {
@@ -699,8 +692,8 @@ void push_edge(struct EDGE_STACK *stack, QUAD_EDGE edge) {
   }
 }
 
-void push_ring(struct EDGE_STACK *stack, QUAD_EDGE edge) {
-    QUAD_EDGE nex;
+void push_ring(_Ptr<struct EDGE_STACK> stack, QUAD_EDGE edge : quad_bounds(edge)) {
+    QUAD_EDGE nex : quad_bounds(nex) = NULL;
     nex = onext(edge);
     while (nex != edge) {
 	if (seen(nex) == 0) {
@@ -711,11 +704,9 @@ void push_ring(struct EDGE_STACK *stack, QUAD_EDGE edge) {
     }
 }
 
-void push_nonzero_ring(stack, edge)
-     struct EDGE_STACK *stack;
-     QUAD_EDGE edge;
+void push_nonzero_ring(_Ptr<struct EDGE_STACK> stack, QUAD_EDGE edge : quad_bounds(edge))
 {
-  QUAD_EDGE nex;
+  QUAD_EDGE nex : quad_bounds(nex) = NULL;
   nex = onext(edge);
   while (nex != edge) {
     if (seen(nex) != 0) {
@@ -726,9 +717,7 @@ void push_nonzero_ring(stack, edge)
   }
 }
 
-void zero_seen(my_stack,edge)
-QUAD_EDGE edge;
-struct EDGE_STACK *my_stack;
+void zero_seen(_Ptr<struct EDGE_STACK> my_stack, QUAD_EDGE edge : quad_bounds(edge))
 {
   my_stack->ptr = 0;
   push_nonzero_ring(my_stack, edge);

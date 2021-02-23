@@ -1,22 +1,23 @@
 /* For copyright information, see olden_v1.0/COPYRIGHT */
 
 #include "defines.h"
-#include <stdio.h>
+#include <stdio_checked.h>
 
-extern struct VEC2 V2_sum();
-extern struct VEC2 V2_sub();
-extern struct VEC2 V2_times();
-extern double V2_cprod();
-extern struct VEC2 V2_cross();
-extern double V2_dot();
-extern double V2_magn();
+#pragma BOUNDS_CHECKED ON
+
+extern struct VEC2 V2_sum(struct VEC2 u, struct VEC2 v);
+extern struct VEC2 V2_sub(struct VEC2 u, struct VEC2 v);
+extern struct VEC2 V2_times(double c, struct VEC2 v);
+extern double V2_cprod(struct VEC2 u,struct VEC2 v);
+extern struct VEC2 V2_cross(struct VEC2 v);
+extern double V2_dot(struct VEC2 u, struct VEC2 v);
+extern double V2_magn(struct VEC2 u);
 
 /****************************************************************/
 /*	Voronoi Output Routines */
 /****************************************************************/
 
-void plot_dedge(p1, p2)
-VERTEX_PTR p1, p2;
+void plot_dedge(VERTEX_PTR p1, VERTEX_PTR p2)
 {
   double x1,x2,y1,y2;
 
@@ -25,12 +26,12 @@ VERTEX_PTR p1, p2;
   x2=X(p2);
   y2=Y(p2);
   /* plots a Delaunay-triangulation edge on your favorite device. */
+  _Unchecked {
   printf("Dedge %g %g %g %g \n",(float) x1, (float) y1,
-	 (float) x2, (float) y2);
+	 (float) x2, (float) y2); }
 }
 
-void plot_vedge(p1, p2)
-     struct VEC2 p1, p2;
+void plot_vedge(struct VEC2 p1, struct VEC2 p2)
 {
   /* plots a Voronoi-diagram edge on your favorite device. */
 
@@ -56,7 +57,7 @@ void plot_vedge(p1, p2)
   if (isnan(p2y))
     p2y = copysign(p2y, 1.0);
 
-  printf("Vedge %g %g %g %g \n", p1x, p1y, p2x, p2y);
+  _Unchecked { printf("Vedge %g %g %g %g \n", p1x, p1y, p2x, p2y); }
 }
 
 struct VEC2 circle_center(struct VEC2 a, struct VEC2 b, struct VEC2 c)
@@ -85,11 +86,11 @@ struct VEC2 circle_center(struct VEC2 a, struct VEC2 b, struct VEC2 c)
   }
 }
 
-int *earray;
+_Array_ptr<int> earray;
 
-void output_voronoi_diagram(QUAD_EDGE edge, int nv, struct EDGE_STACK *my_stack)
+void output_voronoi_diagram(QUAD_EDGE edge : quad_bounds(edge), int nv, _Ptr<struct EDGE_STACK> my_stack)
 {
-  QUAD_EDGE nex, prev, snex, sprev;
+  QUAD_EDGE nex : quad_bounds(nex) = NULL, prev : quad_bounds(prev) = NULL, snex : quad_bounds(snex) = NULL, sprev : quad_bounds(sprev) = NULL;
   struct VEC2 cvxvec, center;
   double ln;
   
@@ -102,7 +103,7 @@ void output_voronoi_diagram(QUAD_EDGE edge, int nv, struct EDGE_STACK *my_stack)
     /*  Plot VD edges with one endpoint at infinity. */
     do {
       struct VEC2 v21,v22,v23;
-      QUAD_EDGE tmp;
+      QUAD_EDGE tmp : quad_bounds(tmp) = NULL;
 
       v21=destv(nex);
       v22=origv(nex);
@@ -128,9 +129,9 @@ void output_voronoi_diagram(QUAD_EDGE edge, int nv, struct EDGE_STACK *my_stack)
   
   my_stack->ptr = 0;
   push_ring(my_stack, edge);
-  printf("mystack_ptr = %d\n",my_stack->ptr);
+  _Unchecked { printf("mystack_ptr = %d\n",my_stack->ptr); }
   while (my_stack->ptr != 0) {
-    VERTEX_PTR v1,v2,v3,v4;
+    VERTEX_PTR v1 = NULL, v2 = NULL, v3 = NULL, v4 = NULL;
     double d1,d2;
         
     edge = pop_edge(my_stack);

@@ -2,6 +2,8 @@
 
 #include "defines.h"
 
+#pragma BOUNDS_CHECKED ON
+
 /****************************************************************
 //	Vector Routines.
 //	From CMU vision library.  
